@@ -42,6 +42,7 @@ defmodule Scantron.Persist do
                      :start_time,
                      :total_time,
                      :response_code,
+                     :error_reason,
                      :response_length], type: :bag, index: [:method_url] do
       def outliers do
 

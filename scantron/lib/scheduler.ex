@@ -1,4 +1,4 @@
-defmodule Scantron.Supervisor do
+defmodule Scantron.Scheduler do
   use Timex
 
   use Scantron.Persist.Database
@@ -12,7 +12,17 @@ defmodule Scantron.Supervisor do
       aggregator + result
     end
   end
-  def init(:ok) do
+
+  defmodule RunningAverage do
+    def new, do: {0, 0}
+    def value({sum, num}), do: sum / num
+
+    def add_result({sum, num}, result) do
+      {sum + result, num + 1}
+    end
+  end
+
+  def run_resources(num_dupicates \\ 1) do
 
     Amnesia.transaction do
       result_set = %ResultSet{start_time: Time.now} |> ResultSet.write
@@ -20,7 +30,7 @@ defmodule Scantron.Supervisor do
       total_time =
 
       Resource.stream
-      |> Enum.map(fn(a) -> List.duplicate(a, 2) end)
+      |> Enum.map(fn(a) -> List.duplicate(a, num_dupicates) end)
       |> List.flatten
       |> Enum.shuffle
       |> Enum.map(&Task.async(fn -> Scantron.Worker.start(result_set.id, &1.method_url, &1.params) end))
@@ -32,5 +42,15 @@ defmodule Scantron.Supervisor do
     end
   end
 
+  def average_time(num_dupicates \\ 1) do
+    result_set = run_resources(num_dupicates)
+
+    Amnesia.transaction do
+      Result.match([url: "https://esharesinc.com", result_set: result_set.id])
+      |> Amnesia.Selection.values
+      |> Enum.reduce(RunningAverage.new, &RunningAverage.add_result(&2, &1.total_time))
+      |> RunningAverage.value
+    end
+  end
 
 end

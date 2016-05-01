@@ -6,17 +6,22 @@ defmodule Scantron.Worker do
 
   def start(result_set, {url, method} = method_url, params) do
     start_timestamp = Time.now
-    {timestamp, {:ok, response}} = Time.measure(fn -> HTTPoison.get(url) end)
-    %Result{
+    {timestamp, response} = Time.measure(fn -> HTTPoison.get(url, timeout: 30000) end)
+
+    result = %Result{
       result_set: result_set,
       method_url: method_url,
       start_time: start_timestamp,
-      total_time: Time.to_msecs(timestamp),
-      response_code: response.status_code,
-      response_length: String.length response.body
-    } |> Result.write!
-    Time.to_msecs(timestamp)
+      total_time: Time.to_milliseconds(timestamp)
+    }
+
+    case response do
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
+        %{result | response_code: status_code, response_length: String.length body}
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        %{result | error_reason: reason}
+    end |> Result.write!
+
+    Time.to_milliseconds(timestamp)
   end
-
-
 end
