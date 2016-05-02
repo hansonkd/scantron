@@ -46,7 +46,7 @@ defmodule Scantron.Scheduler do
     result_set = run_resources(num_dupicates)
 
     Amnesia.transaction do
-      Result.match([url: "https://esharesinc.com", result_set: result_set.id])
+      Result.match([url: "https://google.com", result_set: result_set.id])
       |> Amnesia.Selection.values
       |> Enum.reduce(RunningAverage.new, &RunningAverage.add_result(&2, &1.total_time))
       |> RunningAverage.value
